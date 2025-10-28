@@ -20,7 +20,6 @@ function loadCommands() {
             commandMap.set('/mynotes', handler.handleMyNotes)
         } else if (commandName === 'media') {
             commandMap.set('/img', handler.handleImage)
-            commandMap.set('/voicenote', handler.handleVoiceNote)
         } else if (commandName === 'rag') {
             commandMap.set('/rag', {
                 'add': handler.handleRagAdd,

@@ -75,7 +75,8 @@ const startBot = async () => {
                     if (!msg.message || msg.key.fromMe) continue
 
                     const sender = msg.key.remoteJid
-                    const text = await extractText(msg)
+                    const isGroup = sender.endsWith('@g.us')
+                    let text = await extractText(msg)
 
                     let response = null
 
@@ -85,21 +86,36 @@ const startBot = async () => {
                     }
                     // Text command handling
                     else if (text) {
-                        const args = text.split(/\s+/);
-                        const command = args[0].toLowerCase();
+                        // Normalize prefix: @ for groups, / for private
+                        if (isGroup && text.startsWith('@')) {
+                            text = text.replace(/^@/, '/')
+                        }
+
+                        const args = text.split(/\s+/)
+                        const command = args[0].toLowerCase()
 
                         if (commandMap.has(command)) {
-                            const handler = commandMap.get(command);
+                            const handler = commandMap.get(command)
                             if (typeof handler === 'function') {
-                                response = await handler(sock, msg, sender, text);
-                            } else if (typeof handler === 'object') {
-                                const subCommand = args[1]?.toLowerCase();
-                                if (subCommand && handler[subCommand]) {
-                                    response = await handler[subCommand](sock, msg, sender, text);
+                                if (command === '/help') {
+                                    response = await handler(isGroup)
                                 } else {
-                                    response = `❌ Invalid ${command} command. Use /help to see available commands.`;
+                                    response = await handler(sock, msg, sender, text)
+                                }
+                            } else if (typeof handler === 'object') {
+                                const subCommand = args[1]?.toLowerCase()
+                                if (subCommand && handler[subCommand]) {
+                                    response = await handler[subCommand](sock, msg, sender, text)
+                                } else {
+                                    const prefix = isGroup ? '@' : '/'
+                                    response = `❌ Perintah tidak valid. Ketik ${prefix}help untuk melihat menu.`
                                 }
                             }
+                        }
+                        // If not a command and private chat, respond with AI
+                        else if (!isGroup && !text.startsWith('/') && !text.startsWith('@')) {
+                            const { handleAI } = require('./handlers/ai')
+                            response = await handleAI(sock, msg, sender, `/ai ${text}`)
                         }
                     }
 
@@ -111,7 +127,7 @@ const startBot = async () => {
                     console.error('Error handling message:', err.message)
                     try {
                         await sock.sendMessage(msg.key.remoteJid, {
-                            text: '❌ Sorry, there was an error processing your request'
+                            text: '❌ Maaf, terjadi error. Coba lagi ya.'
                         })
                     } catch (sendErr) {
                         console.error('Failed to send error message:', sendErr.message)
