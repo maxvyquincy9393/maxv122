@@ -15,9 +15,9 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@adiwajshing/baileys": "^5.0.0",
     "@google/generative-ai": "^0.2.0",
     "@huggingface/inference": "^2.6.4",
+    "@whiskeysockets/baileys": "^7.0.0-rc.6",
     "axios": "^1.13.0",
     "cheerio": "^1.0.0-rc.12",
     "crypto": "^1.0.1",

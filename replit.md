@@ -7,8 +7,8 @@ A powerful WhatsApp bot powered by Baileys, Gemini AI, and Hugging Face. The bot
 Console-based WhatsApp bot application (no web server)
 
 ## Architecture
-- **Platform**: Node.js 18+
-- **WhatsApp Integration**: Baileys library
+- **Platform**: Node.js 20+
+- **WhatsApp Integration**: @whiskeysockets/baileys v7 (upgraded from deprecated @adiwajshing/baileys)
 - **AI Services**: 
   - Google Gemini API (required)
   - Hugging Face (optional, for images and voice)
@@ -42,13 +42,15 @@ Required environment variables:
 
 ## Recent Changes
 - **Oct 28, 2025**: Initial import and setup in Replit environment
-  - Upgraded Node.js from v18 to v20 (required for newer dependencies)
-  - Installed all dependencies successfully
-  - Added auth_info_baileys/ to .gitignore
-  - Configured workflow for console output
-  - Set up environment variable management (GEMINI_API_KEY, HF_TOKEN)
-  - Fixed missing storage.js import in utils/helpers.js
-  - Bot starts successfully but experiencing WhatsApp connection issues (known Baileys library limitation in cloud environments)
+  - ✅ Upgraded Node.js from v18 to v20 (required for newer dependencies)
+  - ✅ Migrated from deprecated `@adiwajshing/baileys` to `@whiskeysockets/baileys` v7
+  - ✅ Fixed QR code display by implementing manual QR handler (printQRInTerminal deprecated in v7)
+  - ✅ Fixed missing storage.js import in utils/helpers.js
+  - ✅ Installed all dependencies successfully
+  - ✅ Added auth_info_baileys/ to .gitignore
+  - ✅ Configured workflow for console output
+  - ✅ Set up environment variable management (GEMINI_API_KEY, HF_TOKEN)
+  - ✅ Bot running successfully - QR code displaying correctly in console
 
 ## How to Use
 1. Ensure API keys are configured via Replit Secrets

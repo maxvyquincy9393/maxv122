@@ -1,10 +1,11 @@
 // === MAXVY JARVIS AI REMINDER BOT ===
 // Author: Max Quincy
 
-const { default: makeWASocket, useMultiFileAuthState } = require('@adiwajshing/baileys')
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys')
 const pino = require('pino')
 const cron = require('node-cron')
 const moment = require('moment')
+const qrcode = require('qrcode-terminal')
 
 const { reminders, initStorage } = require('./storage')
 const { extractText } = require('./utils/helpers')
@@ -40,7 +41,6 @@ const startBot = async () => {
         const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
 
         sock = makeWASocket({
-            printQRInTerminal: true,
             auth: state,
             logger: pino({ level: 'silent' })
         })
@@ -49,7 +49,11 @@ const startBot = async () => {
         sock.ev.on('creds.update', saveCreds)
 
         // Connection update handler
-        sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+        sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+            if (qr) {
+                console.log('\n📱 Scan QR code di bawah ini dengan WhatsApp:')
+                qrcode.generate(qr, { small: true })
+            }
             if (connection === 'open') {
                 console.log('✅ Bot connected successfully')
             } else if (connection === 'close') {

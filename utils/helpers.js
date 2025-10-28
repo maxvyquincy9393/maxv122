@@ -1,5 +1,5 @@
 
-const { default: makeWASocket, useMultiFileAuthState, downloadContentFromMessage } = require('@adiwajshing/baileys')
+const { default: makeWASocket, useMultiFileAuthState, downloadContentFromMessage } = require('@whiskeysockets/baileys')
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const { HfInference } = require('@huggingface/inference')
 const cheerio = require('cheerio')
