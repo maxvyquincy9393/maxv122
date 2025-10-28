@@ -42,9 +42,13 @@ Required environment variables:
 
 ## Recent Changes
 - **Oct 28, 2025**: Initial import and setup in Replit environment
+  - Upgraded Node.js from v18 to v20 (required for newer dependencies)
+  - Installed all dependencies successfully
   - Added auth_info_baileys/ to .gitignore
   - Configured workflow for console output
-  - Set up environment variable management
+  - Set up environment variable management (GEMINI_API_KEY, HF_TOKEN)
+  - Fixed missing storage.js import in utils/helpers.js
+  - Bot starts successfully but experiencing WhatsApp connection issues (known Baileys library limitation in cloud environments)
 
 ## How to Use
 1. Ensure API keys are configured via Replit Secrets
