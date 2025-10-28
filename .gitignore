@@ -1,5 +1,6 @@
 node_modules/
 auth.json
+auth_info_baileys/
 reminders.json
 memory.json
 knowledge.json

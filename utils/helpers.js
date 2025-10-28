@@ -16,6 +16,9 @@ const crypto = require('crypto')
 // Load environment variables
 require('dotenv').config()
 
+// Load storage
+const { knowledge, saveKnowledge, getUserKnowledge } = require('../storage')
+
 // Initialize AI clients
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 const hf = new HfInference(process.env.HF_TOKEN)
