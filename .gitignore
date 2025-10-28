@@ -1,0 +1,9 @@
+node_modules/
+auth.json
+reminders.json
+memory.json
+knowledge.json
+docs/
+.env
+.DS_Store
+
