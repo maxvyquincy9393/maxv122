@@ -5,7 +5,7 @@
 require("dotenv").config();
 
 // Start health check server for Render deployment
-require("./health-server");
+const { setQRCode } = require("./health-server");
 
 const {
   default: makeWASocket,
@@ -1347,6 +1347,10 @@ const connectToWhatsApp = async () => {
         qrcode.generate(qr, { small: true });
         console.log("\n🔗 Or use this link:");
         console.log(`https://wa.me/qr/${qr}\n`);
+        
+        // Save QR code for web access
+        setQRCode(qr);
+        console.log(`\n🌐 Or open in browser: https://your-bot-url.railway.app/qr\n`);
       }
 
       if (connection === "close") {
