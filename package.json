@@ -1,15 +1,17 @@
 {
   "name": "maxvy12",
-  "version": "1.0.0",
-  "description": "",
+  "version": "3.1.0",
+  "description": "MAXVY - Advanced WhatsApp AI Assistant Bot with Multi-Provider Support",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "jest"
+    "dev": "node index.js",
+    "test": "jest",
+    "keep-alive": "node keep-alive.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["whatsapp", "bot", "ai", "assistant", "gemini", "groq"],
+  "author": "maxvy.ai",
+  "license": "MIT",
   "type": "commonjs",
   "engines": {
     "node": ">=20"

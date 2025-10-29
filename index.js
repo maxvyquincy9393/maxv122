@@ -4,6 +4,9 @@
 
 require("dotenv").config();
 
+// Start health check server for Render deployment
+require("./health-server");
+
 const {
   default: makeWASocket,
   useMultiFileAuthState,
