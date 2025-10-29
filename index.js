@@ -347,6 +347,7 @@ const { handleHelp } = require("./handlers/help");
 let sock = null;
 let botActive = true;
 let ownerJid = null;
+let isConnected = false;
 
 // User session management - stores user states and contexts
 const userSessions = new Map();
@@ -674,6 +675,8 @@ const handleAIChat = async (
   fileType = null,
 ) => {
   try {
+    console.log("🔍 handleAIChat called with query:", query);
+    
     // Build context from session history
     const history = session.getHistory();
     let contextPrompt = "";
@@ -706,11 +709,61 @@ const handleAIChat = async (
       contextPrompt += `\n\n[PDF Content (${pdfData.pages} pages)]:\n${pdfData.text.substring(0, 2000)}...`;
     }
 
+    // Handle image analysis
+    if (fileBuffer && fileType === "image") {
+      console.log("🖼️ Image detected, analyzing...");
+      try {
+        const imageAnalysis = await analyzeImage(fileBuffer);
+        contextPrompt += `\n\n[Image Analysis]:\n${imageAnalysis}`;
+        console.log("✅ Image analyzed successfully");
+      } catch (error) {
+        logger.error(`❌ Image analysis error: ${error.message}`);
+        contextPrompt += `\n\n[Image uploaded but analysis failed. Please describe what you see or ask about the image.]`;
+      }
+    }
+
+    // Detect if this is a search request
+    const isSearchRequest = /\b(cari|carikan|search|find|info|informasi|jadwal|schedule|berita|news)\b/i.test(query);
+    
+    // Auto search if needed
+    if (isSearchRequest && !fileBuffer) {
+      console.log("🔍 Search request detected, performing web search...");
+      try {
+        // Extract search query
+        let searchQuery = query
+          .replace(/^(cari|carikan|search|find|info|informasi)\s+(tentang|about|untuk|for)?\s*/i, "")
+          .trim();
+        
+        if (searchQuery.length > 3) {
+          const searchResults = await webSearch(searchQuery, { limit: 3 });
+          
+          if (searchResults && searchResults.length > 0) {
+            contextPrompt += `\n\n[Web Search Results for "${searchQuery}"]:\n`;
+            searchResults.forEach((result, index) => {
+              contextPrompt += `${index + 1}. ${result.title}\n`;
+              if (result.snippet) contextPrompt += `   ${result.snippet}\n`;
+              if (result.url) contextPrompt += `   URL: ${result.url}\n`;
+            });
+            console.log(`✅ Found ${searchResults.length} search results`);
+          }
+        }
+      } catch (error) {
+        console.log("⚠️ Web search failed:", error.message);
+      }
+    }
+    
+    console.log("🤖 Calling generateAI...");
+    
+    // Detect if this is a coding request
+    const isCodingRequest = /\b(buat|buatin|bikin|generate|create|code|coding|program|script|function|class)\b.*\b(code|python|javascript|java|html|css|php|ruby|go|rust|c\+\+|c#)\b/i.test(query);
+    
     // Generate AI response with context
     const response = await generateAI(contextPrompt, {
       useMaxvyPersona: true,
-      temperature: 0.8,
+      temperature: isCodingRequest ? 0.3 : 0.8, // Lower temp for code = more precise
     });
+
+    console.log("✅ AI response received:", response?.substring(0, 100));
 
     // Save to session history
     session.addMessage("user", query);
@@ -719,6 +772,7 @@ const handleAIChat = async (
     return response;
   } catch (error) {
     logger.error(`❌ AI chat error: ${error.message}`);
+    console.error("AI chat error stack:", error.stack);
     throw error;
   }
 };
@@ -866,13 +920,47 @@ const handleImageGenerationIntent = async (intent, sender) => {
 
 const handleStickerIntent = async (intent, fileBuffer, msg) => {
   try {
+    const params = intent.params || {};
+    
+    // Check if it's a text sticker
+    if (!fileBuffer && params.text) {
+      console.log(`📝 Creating text sticker: "${params.text}"`);
+      
+      const stickerBuffer = await createSticker({
+        type: "text",
+        data: params.text,
+        options: {
+          bgColor: params.bgColor || "#FF6B35",
+          textColor: params.textColor || "#FFFFFF",
+          style: params.style || "default",
+          metadata: {
+            packname: "MAXVY Stickers",
+            author: "maxvy.ai",
+          },
+        },
+      });
+
+      await sock.sendMessage(msg.key.remoteJid, {
+        sticker: stickerBuffer,
+      });
+
+      return null; // Sticker already sent
+    }
+    
+    // Image sticker
     if (!fileBuffer) {
-      return "❌ Please send an image with caption .sticker";
+      return "❌ Kirim gambar dengan caption .sticker atau buat text sticker dengan .sticker \"text kamu\"";
     }
 
-    const stickerBuffer = await createSticker(fileBuffer, {
-      pack: "MAXVY Stickers",
-      author: "maxvy.ai",
+    const stickerBuffer = await createSticker({
+      type: "image",
+      data: fileBuffer,
+      options: {
+        metadata: {
+          packname: "MAXVY Stickers",
+          author: "maxvy.ai",
+        },
+      },
     });
 
     await sock.sendMessage(msg.key.remoteJid, {
@@ -882,7 +970,7 @@ const handleStickerIntent = async (intent, fileBuffer, msg) => {
     return null; // Sticker already sent
   } catch (error) {
     logger.error(`❌ Sticker error: ${error.message}`);
-    return "❌ Failed to create sticker. Try another image.";
+    return "❌ Gagal membuat sticker. Coba lagi atau gunakan gambar/text lain.";
   }
 };
 
@@ -1132,7 +1220,9 @@ const processMessage = async (msg) => {
       await sock.sendMessage(sender, { text: response });
     }
   } catch (error) {
-    logger.error("❌ Message processing error:", error);
+    logger.error("❌ Message processing error:", error.message);
+    logger.error("Stack trace:", error.stack);
+    console.error("Full error:", error);
     await sock.sendMessage(msg.key.remoteJid, {
       text: "❌ An error occurred. Please try again.",
     });
@@ -1216,6 +1306,7 @@ const connectToWhatsApp = async () => {
       }
 
       if (connection === "close") {
+        isConnected = false;
         const statusCode = lastDisconnect?.error?.output?.statusCode;
         const reason = lastDisconnect?.error?.message || "Unknown";
         logger.warn(
@@ -1233,7 +1324,8 @@ const connectToWhatsApp = async () => {
             "ℹ️ Delete ./auth_info_baileys and scan QR again to create a new session.",
           );
         }
-      } else if (connection === "open") {
+      } else if (connection === "open" && !isConnected) {
+        isConnected = true;
         console.clear();
         logger.info("════════════════════════════════════════");
         logger.info("    ✅ MAXVY Bot Connected!");

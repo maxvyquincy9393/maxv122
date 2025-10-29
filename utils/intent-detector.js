@@ -358,22 +358,23 @@ function detectStickerCreation(text, hasFile) {
     "jadiin stiker",
     "convert to sticker",
     "make sticker",
+    "stciker", // common typo
   ];
 
+  // Check for text sticker with quoted text
+  const hasQuotedText = /"([^"]+)"|'([^']+)'/.test(text);
+  
   // Check for text sticker
-  if (
-    !hasFile &&
-    (text.includes("buatin stiker") || text.includes("stiker text"))
-  ) {
+  if (!hasFile && stickerKeywords.some((keyword) => text.includes(keyword))) {
     return true;
   }
 
   // Check for image to sticker
-  if (hasFile && (text.includes("jadiin stiker") || text.includes("stiker"))) {
+  if (hasFile && stickerKeywords.some((keyword) => text.includes(keyword))) {
     return true;
   }
 
-  return stickerKeywords.some((keyword) => text.includes(keyword));
+  return false;
 }
 
 function detectOCR(text, hasFile, fileType) {
@@ -642,6 +643,23 @@ function detectRealtimeData(text) {
   return realtimeKeywords.some((keyword) => text.includes(keyword));
 }
 
+function detectYtMp3(text) {
+  const ytKeywords = [
+    "ytmp3",
+    "yt mp3",
+    "youtube mp3",
+    "download youtube",
+    "download lagu",
+    "download music",
+    "convert youtube",
+  ];
+
+  // Check if text contains YouTube URL
+  const hasYouTubeUrl = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/i.test(text);
+
+  return ytKeywords.some((keyword) => text.includes(keyword)) || hasYouTubeUrl;
+}
+
 // ==================== PARAMETER PARSERS ====================
 
 function parseReminderParams(text) {
@@ -714,6 +732,23 @@ function parseSingleReminder(text) {
     original: text,
   };
 
+  // Check for "X menit/jam/detik lagi" pattern (relative time)
+  const relativeTimeRegex = /(\d+)\s*(detik|second|menit|minute|jam|hour|hari|day)s?\s+(lagi|later|from now)/i;
+  const relativeMatch = text.match(relativeTimeRegex);
+  
+  if (relativeMatch) {
+    const number = parseInt(relativeMatch[1], 10);
+    const unit = relativeMatch[2];
+    const intervalMs = getIntervalMs(number, unit);
+    
+    if (intervalMs) {
+      // Calculate time from now
+      const now = new Date();
+      result.time = new Date(now.getTime() + intervalMs);
+    }
+  }
+
+  // Check for recurring pattern "setiap X menit/jam"
   const recurringRegex = /(setiap|every)\s+(\d+)?\s*(detik|second|seconds?|menit|minute|minutes|jam|hour|hours?|hari|day|days)/i;
   const recurringMatch = text.match(recurringRegex);
 
@@ -741,6 +776,13 @@ function parseSingleReminder(text) {
   if (recurringMatch) {
     message = message.replace(
       new RegExp(escapeRegExp(recurringMatch[0]), "i"),
+      "",
+    );
+  }
+  
+  if (relativeMatch) {
+    message = message.replace(
+      new RegExp(escapeRegExp(relativeMatch[0]), "i"),
       "",
     );
   }
@@ -785,6 +827,8 @@ function parseStickerParams(text, hasFile, fileType) {
     text: null,
     style: "default",
     position: "center",
+    bgColor: null,
+    textColor: null,
   };
 
   if (hasFile && fileType === "image") {
@@ -799,20 +843,50 @@ function parseStickerParams(text, hasFile, fileType) {
       params.text = textMatch[1] || textMatch[2];
     }
   } else {
-    // Text sticker
-    const textMatch = text.match(/["']([^"']+)["']|stiker (.+)/i);
-    if (textMatch) {
-      params.text = textMatch[1] || textMatch[2];
+    // Text sticker - extract text from quotes
+    const quoteMatch = text.match(/"([^"]+)"|'([^']+)'/);
+    if (quoteMatch) {
+      params.text = quoteMatch[1] || quoteMatch[2];
     } else {
-      params.text = text
-        .replace(/buatin stiker|bikin stiker|stiker/gi, "")
+      // Try to extract text after sticker keyword
+      const afterKeyword = text
+        .replace(/^\.?\s*(buatin|bikin|buat)?\s*(stiker|sticker|stciker)\s*/i, "")
         .trim();
+      
+      if (afterKeyword.length > 0 && afterKeyword.length < 50) {
+        params.text = afterKeyword;
+      }
     }
+  }
+
+  // Detect colors
+  if (text.includes("putih") || text.includes("white")) {
+    params.textColor = "#FFFFFF";
+  }
+  if (text.includes("hitam") || text.includes("black")) {
+    params.bgColor = "#000000";
+  }
+  if (text.includes("merah") || text.includes("red")) {
+    params.bgColor = "#FF0000";
+  }
+  if (text.includes("biru") || text.includes("blue")) {
+    params.bgColor = "#0000FF";
+  }
+  
+  // Detect highlights
+  if (text.includes("highlights hitam") || text.includes("black highlights")) {
+    params.bgColor = "#000000";
+    params.textColor = "#FFFFFF";
   }
 
   // Detect style
   if (text.includes("dark")) params.style = "dark";
   if (text.includes("light")) params.style = "light";
+  
+  // Detect position
+  if (text.includes("tengah") || text.includes("center")) {
+    params.position = "center";
+  }
 
   return params;
 }
@@ -1050,6 +1124,44 @@ function parseEditReminderParams(text) {
   }
 
   return params;
+}
+
+function parseYtMp3Params(text) {
+  const params = {
+    url: null,
+  };
+
+  // Extract YouTube URL
+  const urlMatch = text.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/i);
+  if (urlMatch) {
+    params.url = urlMatch[0];
+  }
+
+  return params;
+}
+
+// Helper function to get interval in milliseconds
+function getIntervalMs(number, unitRaw) {
+  const unit = unitRaw.startsWith("menit") || unitRaw.startsWith("minute")
+    ? "minutes"
+    : unitRaw.startsWith("jam") || unitRaw.startsWith("hour")
+      ? "hours"
+      : unitRaw.startsWith("detik") || unitRaw.startsWith("second")
+        ? "seconds"
+        : unitRaw.startsWith("hari") || unitRaw.startsWith("day")
+          ? "days"
+          : null;
+
+  if (!unit) return null;
+
+  const moment = require("moment");
+  const duration = moment.duration(number, unit);
+  return duration.asMilliseconds();
+}
+
+// Helper function to escape regex special characters
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 module.exports = {
