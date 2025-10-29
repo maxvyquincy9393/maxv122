@@ -1,0 +1,36 @@
+name: Auto Deploy to Render
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  notify-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Notify deployment started
+        run: |
+          echo "🚀 Deployment to Render triggered!"
+          echo "📦 Commit: ${{ github.sha }}"
+          echo "👤 Author: ${{ github.actor }}"
+          echo "📝 Message: ${{ github.event.head_commit.message }}"
+          
+      - name: Wait for Render deployment
+        run: |
+          echo "⏳ Render is building and deploying..."
+          echo "✅ Check status at: https://dashboard.render.com"
+          
+      - name: Deployment info
+        run: |
+          echo "📊 Deployment Info:"
+          echo "   - Branch: ${{ github.ref_name }}"
+          echo "   - Commit: ${{ github.sha }}"
+          echo "   - Time: $(date)"
+          echo ""
+          echo "🔗 Your bot will be live at your Render URL in ~5-10 minutes"
+          echo "📱 Don't forget to scan QR code if it's first deployment!"
