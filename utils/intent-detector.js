@@ -748,8 +748,8 @@ function parseSingleReminder(text) {
     }
   }
 
-  // Check for recurring pattern "setiap X menit/jam"
-  const recurringRegex = /(setiap|every)\s+(\d+)?\s*(detik|second|seconds?|menit|minute|minutes|jam|hour|hours?|hari|day|days)/i;
+  // Check for recurring pattern "setiap X menit/jam" or "selama X menit sekali"
+  const recurringRegex = /(setiap|every|selama)\s+(\d+)?\s*(detik|second|seconds?|menit|minute|minutes|jam|hour|hours?|hari|day|days)\s*(sekali)?/i;
   const recurringMatch = text.match(recurringRegex);
 
   if (recurringMatch) {

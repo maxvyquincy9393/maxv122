@@ -134,3 +134,9 @@ async function webSearch(query, options = {}) {
 
   return [];
 }
+
+module.exports = {
+  webSearch,
+  fetchDuckDuckGo,
+  fetchSerper,
+};
