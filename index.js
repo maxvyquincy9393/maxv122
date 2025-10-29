@@ -1123,16 +1123,19 @@ const handleWebSearchIntent = async (intent, sender) => {
 
 // ==================== MESSAGE PROCESSOR ====================
 
-// Bot trigger keywords for group chats
+// Bot trigger keywords for all chats
 const BOT_TRIGGERS = ['max', 'bot', 'ai', '@max', 'hey max', 'hai max', 'halo max'];
 
-// Check if bot is mentioned/triggered in group
+// Check if bot is mentioned/triggered
 function isBotMentioned(text, isGroup) {
-  if (!isGroup) return true; // Always respond in private chat
+  // Check for command prefix first (always respond to commands)
+  if (text.startsWith('.') || text.startsWith('!') || text.startsWith('/')) {
+    return true;
+  }
   
   const lowerText = text.toLowerCase().trim();
   
-  // Check if any trigger keyword is at the start of message
+  // Check if any trigger keyword is present
   return BOT_TRIGGERS.some(trigger => 
     lowerText.startsWith(trigger) || 
     lowerText.includes(`@${trigger}`) ||
@@ -1164,8 +1167,9 @@ const processMessage = async (msg) => {
       return;
     }
     
-    // In group chats, only respond if bot is mentioned/triggered
-    if (isGroup && !isBotMentioned(text, isGroup) && !hasPrefix(text)) {
+    // Only respond if bot is mentioned/triggered (both private and group)
+    // This prevents bot from responding to every message
+    if (!isBotMentioned(text, isGroup) && !hasPrefix(text)) {
       return; // Ignore messages that don't mention bot
     }
 
@@ -1243,10 +1247,8 @@ const processMessage = async (msg) => {
     let response = null;
     let cleanText = removePrefix(text);
     
-    // Remove trigger keywords if in group chat
-    if (isGroup) {
-      cleanText = removeTriggerKeywords(cleanText);
-    }
+    // Remove trigger keywords from text (both private and group)
+    cleanText = removeTriggerKeywords(cleanText);
 
     // Check if it's a command
     if (hasPrefix(text)) {
