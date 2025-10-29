@@ -1,117 +1,143 @@
+const { generate } = require("../services/gemini");
+const { routeAIRequest } = require("../services/smart-router");
+const { extractWebText } = require("../utils/helpers");
+const { addToHistory, buildContextPrompt } = require("../services/conversation-memory");
 
-const { generate } = require('../services/gemini');
-const { extractWebText } = require('../utils/helpers');
+async function handleAI(sock, msg, sender, text, replyMessage = null) {
+  try {
+    const prompt = text.replace(/^\/ai\s+/, "").trim();
+    if (!prompt)
+      return "⚡ *Max siap membantu*\n\nSaya butuh pertanyaan untuk diproses.\n\nFormat: /ai <pertanyaan Anda>\nContoh: /ai Apa itu machine learning?";
 
-async function handleAI(sock, msg, sender, text) {
-    try {
-        const prompt = text.replace(/^\/ai\s+/, '').trim();
-        if (!prompt) return '❌ Format: /ai <prompt>\n\nExample: /ai Apa itu machine learning?';
-
-        return await generate(prompt);
-    } catch (err) {
-        console.error('Error in handleAI:', err.message);
-        return '❌ Error processing AI request. Please try again.';
-    }
+    // Build context with conversation history and reply
+    const contextPrompt = buildContextPrompt(sender, prompt, replyMessage);
+    
+    // Add user message to history
+    addToHistory(sender, 'user', prompt);
+    
+    // Use smart router to select best AI provider
+    const response = await routeAIRequest(contextPrompt);
+    
+    // Add assistant response to history
+    addToHistory(sender, 'assistant', response);
+    
+    return response;
+  } catch (err) {
+    console.error("Error in handleAI:", err.message);
+    return "❌ Maaf, ada gangguan teknis. Coba lagi dalam 1-2 menit ya!";
+  }
 }
 
 async function handleTranslate(sock, msg, sender, text) {
-    try {
-        const match = text.match(/^\/translate\s+([a-zA-Z-]+)\s+"([^"]+)"/);
-        if (!match) return '❌ Format: /translate <lang> "text"\n\nExample: /translate english "Halo dunia"';
+  try {
+    const match = text.match(/^\/translate\s+([a-zA-Z-]+)\s+"([^"]+)"/);
+    if (!match)
+      return '⚡ *Layanan Terjemahan*\n\nFormat: /translate <bahasa> "teks"\n\nContoh: /translate english "Halo dunia"\n\nSiap membantu!';
 
-        const [_, lang, content] = match;
-        const prompt = `Translate this text to ${lang}:\n${content}`;
+    const [_, lang, content] = match;
+    const prompt = `Translate this text to ${lang}:\n${content}`;
 
-        return await generate(prompt);
-    } catch (err) {
-        console.error('Error in handleTranslate:', err.message);
-        return '❌ Error translating text. Please try again.';
-    }
+    return await generate(prompt);
+  } catch (err) {
+    console.error("Error in handleTranslate:", err.message);
+    return "❌ Maaf, terjemahan gagal. Coba lagi ya!";
+  }
 }
 
 async function handleSummarize(sock, msg, sender, text) {
-    try {
-        const input = text.replace(/^\/summarize\s+/, '').trim();
-        if (!input) return '❌ Format: /summarize <text|url>\n\nExample: /summarize "Long text here..."';
+  try {
+    const input = text.replace(/^\/summarize\s+/, "").trim();
+    if (!input)
+      return '⚡ *Ringkasan Konten*\n\nFormat: /summarize <teks|url>\n\nContoh: /summarize "Teks panjang..."\nContoh: /summarize https://example.com\n\nSiap memproses!';
 
-        let content = input;
-        if (input.startsWith('http')) {
-            content = await extractWebText(input);
-            if (!content) return '❌ Error fetching URL. Please check the URL and try again.';
-        }
-
-        const prompt = `Summarize this text concisely:\n${content}`;
-
-        return await generate(prompt);
-    } catch (err) {
-        console.error('Error in handleSummarize:', err.message);
-        return '❌ Error summarizing text. Please try again.';
+    let content = input;
+    if (input.startsWith("http")) {
+      content = await extractWebText(input);
+      if (!content)
+        return "⚠️ Tidak bisa mengambil konten URL. Mohon periksa URL dan coba lagi.";
     }
+
+    const prompt = `Summarize this text concisely:\n${content}`;
+
+    // Use smart router (heavy task - Gemini)
+    return await routeAIRequest(prompt);
+  } catch (err) {
+    console.error("Error in handleSummarize:", err.message);
+    return "❌ Maaf, ringkasan gagal. Coba lagi ya!";
+  }
 }
 
 async function handleRewrite(sock, msg, sender, text) {
-    try {
-        const match = text.match(/^\/rewrite(?:\s+(formal|casual|brief|long))?\s+"([^"]+)"/);
-        if (!match) return '❌ Format: /rewrite [formal|casual|brief|long] "text"\n\nExample: /rewrite casual "This is a formal text"';
+  try {
+    const match = text.match(
+      /^\/rewrite(?:\s+(formal|casual|brief|long))?\s+"([^"]+)"/,
+    );
+    if (!match)
+      return '⚡ *Layanan Penulisan Ulang*\n\nFormat: /rewrite [style] "teks"\n\nStyle: formal, casual, brief, long\n\nContoh: /rewrite casual "Ini teks formal"\n\nSiap membantu!';
 
-        const [_, style = 'casual', content] = match;
-        const prompt = `Rewrite this text in a ${style} style:\n${content}`;
+    const [_, style = "casual", content] = match;
+    const prompt = `Rewrite this text in a ${style} style:\n${content}`;
 
-        return await generate(prompt);
-    } catch (err) {
-        console.error('Error in handleRewrite:', err.message);
-        return '❌ Error rewriting text. Please try again.';
-    }
+    return await generate(prompt);
+  } catch (err) {
+    console.error("Error in handleRewrite:", err.message);
+    return "❌ Maaf, tulis ulang gagal. Coba lagi ya!";
+  }
 }
 
 async function handleCaption(sock, msg, sender, text) {
-    try {
-        const topic = text.replace(/^\/caption\s+/, '').trim();
-        if (!topic) return '❌ Format: /caption <topic>\n\nExample: /caption "sunset at beach"';
+  try {
+    const topic = text.replace(/^\/caption\s+/, "").trim();
+    if (!topic)
+      return '⚡ *Generator Caption*\n\nFormat: /caption <topik>\n\nContoh: /caption "sunset di pantai"\n\nSiap membuat caption menarik!';
 
-        const prompt = `Generate a creative and engaging social media caption about: ${topic}`;
+    const prompt = `Generate a creative and engaging social media caption about: ${topic}`;
 
-        return await generate(prompt);
-    } catch (err) {
-        console.error('Error in handleCaption:', err.message);
-        return '❌ Error generating caption. Please try again.';
-    }
+    // Use smart router (light task - Groq)
+    return await routeAIRequest(prompt);
+  } catch (err) {
+    console.error("Error in handleCaption:", err.message);
+    return "❌ Maaf, buat caption gagal. Coba lagi ya!";
+  }
 }
 
 async function handleIdea(sock, msg, sender, text) {
-    try {
-        const topic = text.replace(/^\/idea\s+/, '').trim();
-        if (!topic) return '❌ Format: /idea <topic>\n\nExample: /idea "content marketing"';
+  try {
+    const topic = text.replace(/^\/idea\s+/, "").trim();
+    if (!topic)
+      return '💡 *Generator Ide*\n\nFormat: /idea <topik>\n\nContoh: /idea "content marketing"\n\nSiap brainstorming!';
 
-        const prompt = `Generate 3-5 creative content ideas about: ${topic}`;
+    const prompt = `Generate 3-5 creative content ideas about: ${topic}`;
 
-        return await generate(prompt);
-    } catch (err) {
-        console.error('Error in handleIdea:', err.message);
-        return '❌ Error generating ideas. Please try again.';
-    }
+    // Use smart router (light task - Groq)
+    return await routeAIRequest(prompt);
+  } catch (err) {
+    console.error("Error in handleIdea:", err.message);
+    return "❌ Maaf, buat ide gagal. Coba lagi ya!";
+  }
 }
 
 async function handleCode(sock, msg, sender, text) {
-    try {
-        const match = text.match(/^\/code\s+"([^"]+)"/);
-        if (!match) return '❌ Format: /code "task in <language>"\n\nExample: /code "fibonacci function in javascript"';
+  try {
+    const match = text.match(/^\/code\s+"([^"]+)"/);
+    if (!match)
+      return '⚡ *Generator Kode*\n\nFormat: /code "tugas dalam <bahasa>"\n\nContoh: /code "fibonacci function in javascript"\n\nSiap memproses!';
 
-        const prompt = `Generate code for this task:\n${match[1]}\nProvide a brief explanation.`;
+    const prompt = `Generate code for this task:\n${match[1]}\nProvide a brief explanation.`;
 
-        return await generate(prompt);
-    } catch (err) {
-        console.error('Error in handleCode:', err.message);
-        return '❌ Error generating code. Please try again.';
-    }
+    return await generate(prompt);
+  } catch (err) {
+    console.error("Error in handleCode:", err.message);
+    return "❌ Maaf, buat kode gagal. Coba lagi ya!";
+  }
 }
 
 module.exports = {
-    handleAI,
-    handleTranslate,
-    handleSummarize,
-    handleRewrite,
-    handleCaption,
-    handleIdea,
-    handleCode
+  handleAI,
+  handleTranslate,
+  handleSummarize,
+  handleRewrite,
+  handleCaption,
+  handleIdea,
+  handleCode,
 };

@@ -38,6 +38,22 @@ const STORAGE = {
     docs: './docs'
 }
 
+// Bad words filter
+const BAD_WORDS = [
+    'anjing', 'babi', 'memek', 'kontol', 'pepek', 'jembut', 'tai', 'bangsat',
+    'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'cunt',
+    'anjeng', 'ngentot', 'ngewe', 'jancok', 'tolol', 'goblok'
+];
+
+function containsBadWords(text) {
+    const lowerText = text.toLowerCase();
+    return BAD_WORDS.some(word => lowerText.includes(word));
+}
+
+function isAbusiveUser(session) {
+    return (session.badWordCount || 0) >= 3;
+}
+
 // Time parsing utility
 const parseTime = (text) => {
     // Handle various time formats
@@ -381,6 +397,8 @@ module.exports = {
     geminiReply,
     generateImage,
     fetchUrlText,
+    containsBadWords,
+    isAbusiveUser,
     fetchPdfText,
     readLocalFileText,
     ingestDirectory,
