@@ -1123,6 +1123,35 @@ const handleWebSearchIntent = async (intent, sender) => {
 
 // ==================== MESSAGE PROCESSOR ====================
 
+// Bot trigger keywords for group chats
+const BOT_TRIGGERS = ['max', 'bot', 'ai', '@max', 'hey max', 'hai max', 'halo max'];
+
+// Check if bot is mentioned/triggered in group
+function isBotMentioned(text, isGroup) {
+  if (!isGroup) return true; // Always respond in private chat
+  
+  const lowerText = text.toLowerCase().trim();
+  
+  // Check if any trigger keyword is at the start of message
+  return BOT_TRIGGERS.some(trigger => 
+    lowerText.startsWith(trigger) || 
+    lowerText.includes(`@${trigger}`) ||
+    lowerText.includes(`hey ${trigger}`) ||
+    lowerText.includes(`hai ${trigger}`) ||
+    lowerText.includes(`halo ${trigger}`)
+  );
+}
+
+// Remove trigger keywords from text
+function removeTriggerKeywords(text) {
+  let cleanText = text;
+  BOT_TRIGGERS.forEach(trigger => {
+    const regex = new RegExp(`^${trigger}\\s*[,:]?\\s*|@${trigger}\\s*|hey\\s+${trigger}\\s*|hai\\s+${trigger}\\s*|halo\\s+${trigger}\\s*`, 'gi');
+    cleanText = cleanText.replace(regex, '').trim();
+  });
+  return cleanText;
+}
+
 const processMessage = async (msg) => {
   try {
     const sender = msg.key.remoteJid;
@@ -1133,6 +1162,11 @@ const processMessage = async (msg) => {
     // Skip if bot is inactive (except for owner)
     if (!botActive && sender !== ownerJid) {
       return;
+    }
+    
+    // In group chats, only respond if bot is mentioned/triggered
+    if (isGroup && !isBotMentioned(text, isGroup) && !hasPrefix(text)) {
+      return; // Ignore messages that don't mention bot
     }
 
     // Check for bad words and handle abuse (track only, don't respond)
@@ -1207,15 +1241,20 @@ const processMessage = async (msg) => {
 
     // Process commands or natural chat
     let response = null;
-    const cleanText = removePrefix(text);
+    let cleanText = removePrefix(text);
+    
+    // Remove trigger keywords if in group chat
+    if (isGroup) {
+      cleanText = removeTriggerKeywords(cleanText);
+    }
 
     // Check if it's a command
     if (hasPrefix(text)) {
       const intent = await detectIntent(cleanText);
       response = await processIntent(intent, msg, sender, fileBuffer, fileType);
-    } else if ((text && text.trim().length > 2) || fileBuffer) {
+    } else if ((cleanText && cleanText.trim().length > 2) || fileBuffer) {
       // Natural conversation - always process with AI
-      response = await handleAIChat(text, session, fileBuffer, fileType);
+      response = await handleAIChat(cleanText, session, fileBuffer, fileType);
     }
 
     // Send response if generated
