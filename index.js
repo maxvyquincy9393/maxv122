@@ -622,6 +622,9 @@ const processIntent = async (intent, msg, sender, fileBuffer, fileType) => {
       case "list_reminders":
         return await handleListRemindersIntent(sender);
 
+      case "delete_reminder":
+        return await handleDeleteReminderIntent(intent, sender);
+
       case "generate_image":
         return await handleImageGenerationIntent(intent, sender);
 
@@ -656,7 +659,40 @@ const processIntent = async (intent, msg, sender, fileBuffer, fileType) => {
         return await handleYtMp3Intent(intent, sender, msg);
 
       case "help":
-        return "📖 *HELP MENU*\n\nCommands:\n• .help - Show this menu\n• .image [prompt] - Generate image\n• .sticker - Create sticker\n• .ocr - Extract text from image\n• .pdf - Process PDF\n• .ingetin - Set reminder\n\nJust chat normally for AI responses!";
+        return `📖 *MAXVY BOT - HELP MENU*
+
+🤖 *AI CHAT*
+• Chat biasa aja - AI akan jawab otomatis
+• Kirim gambar + caption - AI analisa gambar
+• Kirim audio - Auto transcribe
+
+🎨 *IMAGE & STICKER*
+• .image [prompt] - Generate gambar
+• .sticker - Bikin sticker dari gambar
+• Reply gambar + .sticker - Convert ke sticker
+
+📝 *TEXT & DOCUMENT*
+• .ocr - Extract text dari gambar
+• .pdf - Kirim PDF untuk dianalisa
+• .tts [text] - Text to speech
+
+⏰ *REMINDER*
+• .ingetin [waktu] [pesan] - Buat reminder
+• .lihatreminder - Lihat semua reminder
+• .hapusreminder [id/nomor] - Hapus reminder
+• .hapusreminder semua - Hapus semua
+
+🔍 *SEARCH & INFO*
+• .search [query] - Web search
+• .crypto [symbol] - Cek harga crypto
+• .ytmp3 [url] - Download YouTube audio
+
+💡 *TIPS*
+• Prefix: . atau ! atau /
+• Chat natural aja, AI paham konteks
+• Kirim file langsung untuk diproses
+
+Developed by maxvy.ai 🚀`;
 
       default:
         // Process with AI including conversation context
@@ -869,10 +905,10 @@ const handleListRemindersIntent = async (sender) => {
   const userReminders = reminders[sender] || [];
 
   if (userReminders.length === 0) {
-    return "📭 You have no active reminders.\n\nCreate one: .ingetin [time] [message]";
+    return "📭 Kamu belum punya reminder aktif.\n\nBuat reminder: .ingetin [waktu] [pesan]";
   }
 
-  let text = "📋 *Your Active Reminders:*\n\n";
+  let text = "📋 *Reminder Aktif Kamu:*\n\n";
 
   userReminders
     .filter((r) => r.active)
@@ -881,9 +917,66 @@ const handleListRemindersIntent = async (sender) => {
       text += `${index + 1}. ⏰ ${time}\n   📝 ${r.message}\n   🆔 ID: ${r.id}\n\n`;
     });
 
-  text += "\n_To delete: .hapusreminder [id]_";
+  text += "\n💡 _Hapus reminder: .hapusreminder [id]_";
+  text += "\n💡 _Hapus semua: .hapusreminder semua_";
 
   return text;
+};
+
+const handleDeleteReminderIntent = async (intent, sender) => {
+  try {
+    const params = intent.params || {};
+    const userReminders = reminders[sender] || [];
+
+    if (userReminders.length === 0) {
+      return "📭 Kamu tidak punya reminder aktif untuk dihapus.";
+    }
+
+    // Delete all reminders
+    if (params.all) {
+      const count = userReminders.filter((r) => r.active).length;
+      reminders[sender] = [];
+      await saveData();
+      return `✅ *Semua reminder dihapus!*\n\n🗑️ ${count} reminder berhasil dihapus.`;
+    }
+
+    // Delete by ID
+    if (params.id) {
+      const reminderIndex = userReminders.findIndex((r) => r.id === params.id && r.active);
+      
+      if (reminderIndex === -1) {
+        return `❌ Reminder dengan ID "${params.id}" tidak ditemukan.\n\nLihat reminder aktif: .lihatreminder`;
+      }
+
+      const deleted = userReminders.splice(reminderIndex, 1)[0];
+      await saveData();
+
+      return `✅ *Reminder dihapus!*\n\n📝 ${deleted.message}\n⏰ ${moment(deleted.time).format("DD MMM YYYY - HH:mm")}`;
+    }
+
+    // Delete by index (number)
+    if (params.index !== null && params.index !== undefined) {
+      const activeReminders = userReminders.filter((r) => r.active);
+      const index = parseInt(params.index) - 1;
+
+      if (index < 0 || index >= activeReminders.length) {
+        return `❌ Nomor reminder tidak valid.\n\nKamu punya ${activeReminders.length} reminder aktif.\nLihat: .lihatreminder`;
+      }
+
+      const reminderToDelete = activeReminders[index];
+      const reminderIndex = userReminders.findIndex((r) => r.id === reminderToDelete.id);
+      
+      const deleted = userReminders.splice(reminderIndex, 1)[0];
+      await saveData();
+
+      return `✅ *Reminder dihapus!*\n\n📝 ${deleted.message}\n⏰ ${moment(deleted.time).format("DD MMM YYYY - HH:mm")}`;
+    }
+
+    return "❌ Format salah.\n\nContoh:\n• .hapusreminder [id]\n• .hapusreminder 1\n• .hapusreminder semua";
+  } catch (error) {
+    logger.error(`❌ Delete reminder error: ${error.message}`);
+    return "❌ Gagal menghapus reminder. Coba lagi.";
+  }
 };
 
 const handleImageGenerationIntent = async (intent, sender) => {
