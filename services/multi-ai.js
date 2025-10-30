@@ -56,11 +56,12 @@ const openrouter = process.env.OPENROUTER_API_KEY
 const MODELS = {
   gemini: process.env.GEMINI_MODEL || "gemini-2.0-flash",
   groq: "llama-3.1-8b-instant",
+  grok: "x-ai/grok-beta", // Grok via OpenRouter - for short prompts
   llm7: "gpt-4o-mini", // LLM7 - Fast & powerful
   cohere: "command-r-plus",
   mistral: "mistral-small-latest",
   together: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-  openrouter: "z-ai/glm-4.5-air:free", // GPT-OSS via OpenRouter
+  openrouter: "google/gemma-2-9b-it:free", // Gemma 2 9B - Free fallback
 };
 
 const MAX_OUTPUT_TOKENS = 1024;
@@ -169,6 +170,31 @@ const usageStats = {
 };
 
 /**
+ * Count sentences in a text
+ */
+function countSentences(text) {
+  if (!text) return 0;
+  // Split by sentence endings (., !, ?, newlines)
+  const sentences = text.trim().split(/[.!?\n]+/).filter(s => s.trim().length > 0);
+  return sentences.length;
+}
+
+/**
+ * Determine which provider to use based on prompt length
+ */
+function selectProviderByPromptLength(prompt) {
+  const sentenceCount = countSentences(prompt);
+  
+  if (sentenceCount <= 3) {
+    // Short prompt: Use Groq (super fast!)
+    return 'groq';
+  } else {
+    // Long prompt: Use Gemini (better for complex queries)
+    return 'gemini';
+  }
+}
+
+/**
  * Generate AI response with automatic fallback and memory
  * @param {string} prompt - User prompt
  * @param {object} options - Optional configurations
@@ -187,6 +213,12 @@ async function generateAI(prompt, options = {}) {
 
   const finalSystemPrompt = useMaxvyPersona ? systemPrompt : null;
   const errors = [];
+  
+  // Auto-select provider based on prompt length if not specified
+  const autoSelectedProvider = preferredProvider || selectProviderByPromptLength(prompt);
+  const sentenceCount = countSentences(prompt);
+  
+  console.log(`📊 Prompt analysis: ${sentenceCount} sentences → Using ${autoSelectedProvider}`);
 
   let workingPrompt = prompt;
 
@@ -202,73 +234,10 @@ async function generateAI(prompt, options = {}) {
     }
   }
 
-  // If preferred provider is specified, try it first
-  if (preferredProvider === "openrouter" && openrouter) {
+  // PRIMARY: Try auto-selected provider first (Groq for short, Gemini for long)
+  if (autoSelectedProvider === "groq" && groq) {
     try {
-      console.log("🟠 Using OpenRouter Grok (preferred)...");
-      const response = await generateWithOpenRouter(
-        workingPrompt,
-        finalSystemPrompt,
-        temperature,
-      );
-      usageStats.openrouter.success++;
-      console.log("✅ OpenRouter success");
-      return response;
-    } catch (error) {
-      console.log("❌ OpenRouter failed:", error.message);
-      usageStats.openrouter.failed++;
-      usageStats.openrouter.lastError = error.message;
-      errors.push(`OpenRouter: ${error.message}`);
-    }
-  }
-
-  if (preferredProvider === "gemini" && gemini) {
-    try {
-      console.log("🧠 Using Gemini (preferred)...");
-      const response = await generateWithGemini(
-        workingPrompt,
-        finalSystemPrompt,
-        temperature,
-      );
-      usageStats.gemini.success++;
-      console.log("✅ Gemini success");
-      return response;
-    } catch (error) {
-      console.log("❌ Gemini failed:", error.message);
-      usageStats.gemini.failed++;
-      usageStats.gemini.lastError = error.message;
-      errors.push(`Gemini: ${error.message}`);
-    }
-  }
-
-  // Primary: OpenRouter Grok
-  if (openrouter && preferredProvider !== "openrouter") {
-    try {
-      console.log("⚡ Trying OpenRouter Grok (primary)...");
-      const response = await generateWithOpenRouter(
-        workingPrompt,
-        finalSystemPrompt,
-        temperature,
-      );
-      usageStats.openrouter.success++;
-      console.log("✅ OpenRouter success");
-      return response;
-    } catch (error) {
-      console.log("❌ OpenRouter failed:", error.message);
-      usageStats.openrouter.failed++;
-      usageStats.openrouter.lastError = error.message;
-      errors.push(`OpenRouter: ${error.message}`);
-    }
-  }
-
-  if (preferredProvider === "gemini" && gemini) {
-    // already handled above, so skip further attempts
-  }
-
-  // Secondary: Groq
-  if (groq && preferredProvider !== "gemini" && preferredProvider !== "openrouter") {
-    try {
-      console.log("⚡ Trying Groq (primary)...");
+      console.log("⚡ Using Groq (short prompt - PRIMARY - super fast!)...");
       const response = await generateWithGroq(
         workingPrompt,
         finalSystemPrompt,
@@ -285,10 +254,9 @@ async function generateAI(prompt, options = {}) {
     }
   }
 
-  // Fallback to Gemini (if not already tried)
-  if (gemini && preferredProvider !== "gemini") {
+  if (autoSelectedProvider === "gemini" && gemini) {
     try {
-      console.log("🤖 Trying Gemini (fallback)...");
+      console.log("🧠 Using Gemini (long prompt - PRIMARY)...");
       const response = await generateWithGemini(
         workingPrompt,
         finalSystemPrompt,
@@ -302,6 +270,85 @@ async function generateAI(prompt, options = {}) {
       usageStats.gemini.failed++;
       usageStats.gemini.lastError = error.message;
       errors.push(`Gemini: ${error.message}`);
+    }
+  }
+
+  // FALLBACK 1: Try the other primary provider
+  if (autoSelectedProvider === "groq" && gemini) {
+    try {
+      console.log("🧠 Trying Gemini (fallback 1)...");
+      const response = await generateWithGemini(
+        workingPrompt,
+        finalSystemPrompt,
+        temperature,
+      );
+      usageStats.gemini.success++;
+      console.log("✅ Gemini success");
+      return response;
+    } catch (error) {
+      console.log("❌ Gemini failed:", error.message);
+      usageStats.gemini.failed++;
+      usageStats.gemini.lastError = error.message;
+      errors.push(`Gemini: ${error.message}`);
+    }
+  }
+
+  if (autoSelectedProvider === "gemini" && groq) {
+    try {
+      console.log("⚡ Trying Groq (fallback 1)...");
+      const response = await generateWithGroq(
+        workingPrompt,
+        finalSystemPrompt,
+        temperature,
+      );
+      usageStats.groq.success++;
+      console.log("✅ Groq success");
+      return response;
+    } catch (error) {
+      console.log("❌ Groq failed:", error.message);
+      usageStats.groq.failed++;
+      usageStats.groq.lastError = error.message;
+      errors.push(`Groq: ${error.message}`);
+    }
+  }
+
+  // FALLBACK 2: OpenRouter Gemma (free model)
+  if (openrouter) {
+    try {
+      console.log("🟠 Trying OpenRouter Gemma (fallback 2)...");
+      const response = await generateWithOpenRouter(
+        workingPrompt,
+        finalSystemPrompt,
+        temperature,
+      );
+      usageStats.openrouter.success++;
+      console.log("✅ OpenRouter Gemma success");
+      return response;
+    } catch (error) {
+      console.log("❌ OpenRouter Gemma failed:", error.message);
+      usageStats.openrouter.failed++;
+      usageStats.openrouter.lastError = error.message;
+      errors.push(`OpenRouter: ${error.message}`);
+    }
+  }
+
+  // FALLBACK 3: Groq
+  if (groq) {
+    try {
+      console.log("⚡ Trying Groq (fallback 3)...");
+      const response = await generateWithGroq(
+        workingPrompt,
+        finalSystemPrompt,
+        temperature,
+      );
+      usageStats.groq.success++;
+      console.log("✅ Groq success");
+      return response;
+    } catch (error) {
+      console.log("❌ Groq failed:", error.message);
+      usageStats.groq.failed++;
+      usageStats.groq.lastError = error.message;
+      errors.push(`Groq: ${error.message}`);
     }
   }
 
@@ -577,7 +624,41 @@ async function generateWithTogether(prompt, systemPrompt, temperature) {
 }
 
 /**
- * Generate with OpenRouter
+ * Generate with Grok (via OpenRouter)
+ */
+async function generateWithGrok(prompt, systemPrompt, temperature) {
+  const messages = [];
+
+  if (systemPrompt) {
+    messages.push({
+      role: "system",
+      content: systemPrompt,
+    });
+  }
+
+  messages.push({
+    role: "user",
+    content: prompt,
+  });
+
+  const completion = await openrouter.chat.completions.create({
+    model: MODELS.grok,
+    messages: messages,
+    temperature: temperature,
+    max_tokens: MAX_OUTPUT_TOKENS,
+  });
+
+  const text = completion.choices[0]?.message?.content;
+
+  if (!text) {
+    throw new Error("Empty response from Grok");
+  }
+
+  return text;
+}
+
+/**
+ * Generate with OpenRouter (Gemma fallback)
  */
 async function generateWithOpenRouter(prompt, systemPrompt, temperature) {
   const messages = [];
