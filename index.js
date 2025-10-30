@@ -659,40 +659,44 @@ const processIntent = async (intent, msg, sender, fileBuffer, fileType) => {
         return await handleYtMp3Intent(intent, sender, msg);
 
       case "help":
-        return `📖 *MAXVY BOT - HELP MENU*
+      case "prompt":
+      case "commands":
+        return `🤖 *MAX - Your AI Companion*
 
-🤖 *AI CHAT*
-• Chat biasa aja - AI akan jawab otomatis
-• Kirim gambar + caption - AI analisa gambar
-• Kirim audio - Auto transcribe
+💬 *CHAT & AI*
+Chat aja langsung, gue bakal jawab!
+• Kirim gambar → Gue analisa
+• Kirim audio → Auto transcribe
+• Kirim PDF → Gue baca & jawab pertanyaan
 
-🎨 *IMAGE & STICKER*
-• .image [prompt] - Generate gambar
-• .sticker - Bikin sticker dari gambar
-• Reply gambar + .sticker - Convert ke sticker
+🎨 *CREATIVE*
+• \`.image [deskripsi]\` - Bikin gambar AI
+• \`.sticker\` - Bikin sticker dari gambar
+• \`.tts [text]\` - Text jadi audio
 
-📝 *TEXT & DOCUMENT*
-• .ocr - Extract text dari gambar
-• .pdf - Kirim PDF untuk dianalisa
-• .tts [text] - Text to speech
+📝 *UTILITY*
+• \`.ocr\` - Extract text dari gambar
+• \`.search [query]\` - Web search
+• \`.crypto [BTC/ETH]\` - Cek harga crypto
+• \`.ytmp3 [url]\` - Download lagu dari YouTube
 
 ⏰ *REMINDER*
-• .ingetin [waktu] [pesan] - Buat reminder
-• .lihatreminder - Lihat semua reminder
-• .hapusreminder [id/nomor] - Hapus reminder
-• .hapusreminder semua - Hapus semua
+• \`.ingetin [waktu] [pesan]\` - Set reminder
+  Contoh: .ingetin besok jam 9 meeting
+• \`.lihatreminder\` - Lihat semua reminder
+• \`.hapusreminder [id]\` - Hapus reminder
+• \`.hapusreminder semua\` - Hapus semua
 
-🔍 *SEARCH & INFO*
-• .search [query] - Web search
-• .crypto [symbol] - Cek harga crypto
-• .ytmp3 [url] - Download YouTube audio
+📋 *INFO*
+• \`.help\` atau \`.prompt\` - Menu ini
+• \`.commands\` - List command
 
 💡 *TIPS*
-• Prefix: . atau ! atau /
-• Chat natural aja, AI paham konteks
-• Kirim file langsung untuk diproses
+• Prefix: \`.  !  /\` (pilih salah satu)
+• Chat natural aja, gue paham konteks
+• Kirim file langsung tanpa command
 
-Developed by maxvy.ai 🚀`;
+_Powered by maxvy.ai 🚀_`;
 
       default:
         // Process with AI including conversation context
