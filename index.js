@@ -1338,19 +1338,43 @@ const connectToWhatsApp = async () => {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
-        console.clear();
-        console.log("\n════════════════════════════════════════");
-        console.log("    MAXVY v3.1 - WhatsApp AI Bot");
-        console.log("    Created by maxvy.ai");
-        console.log("════════════════════════════════════════\n");
-        console.log("📱 Scan QR Code with WhatsApp:\n");
-        qrcode.generate(qr, { small: true });
-        console.log("\n🔗 Or use this link:");
-        console.log(`https://wa.me/qr/${qr}\n`);
-        
         // Save QR code for web access
         setQRCode(qr);
-        console.log(`\n🌐 Or open in browser: https://your-bot-url.railway.app/qr\n`);
+        
+        const port = process.env.PORT || 3000;
+        
+        // Check if running in production (Railway/Render)
+        const isProduction = process.env.RAILWAY_ENVIRONMENT || process.env.RENDER || process.env.NODE_ENV === 'production';
+        
+        if (isProduction) {
+          // Production: Only show web URL (terminal QR doesn't work in Railway logs)
+          console.log("\n════════════════════════════════════════");
+          console.log("    MAXVY v3.1 - WhatsApp AI Bot");
+          console.log("    Created by maxvy.ai");
+          console.log("════════════════════════════════════════\n");
+          console.log("📱 QR Code Ready!");
+          console.log("\n🌐 Scan QR Code in browser:");
+          
+          if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+            console.log(`   👉 https://${process.env.RAILWAY_PUBLIC_DOMAIN}/qr`);
+          } else if (process.env.RENDER_EXTERNAL_URL) {
+            console.log(`   👉 ${process.env.RENDER_EXTERNAL_URL}/qr`);
+          } else {
+            console.log(`   👉 Check your Railway/Render dashboard for public URL`);
+          }
+          console.log("\n⚠️  Open the URL above in your browser to scan QR code");
+          console.log("════════════════════════════════════════\n");
+        } else {
+          // Local development: Show terminal QR
+          console.clear();
+          console.log("\n════════════════════════════════════════");
+          console.log("    MAXVY v3.1 - WhatsApp AI Bot");
+          console.log("    Created by maxvy.ai");
+          console.log("════════════════════════════════════════\n");
+          console.log("📱 Scan QR Code with WhatsApp:\n");
+          qrcode.generate(qr, { small: true });
+          console.log(`\n🌐 Or open in browser: http://localhost:${port}/qr\n`);
+        }
       }
 
       if (connection === "close") {

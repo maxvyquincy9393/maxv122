@@ -11,9 +11,15 @@ let qrTimestamp = null;
 
 // Function to set QR code
 const setQRCode = (qr) => {
+  if (!qr) {
+    console.log('⚠️ Warning: Attempted to set empty QR code');
+    return;
+  }
   latestQRCode = qr;
   qrTimestamp = new Date();
   console.log('✅ QR Code saved! Access at: /qr');
+  console.log(`📊 QR Code length: ${qr.length} characters`);
+  console.log(`🌐 Access URL: http://localhost:${PORT}/qr`);
 };
 
 // Health check endpoint
@@ -45,24 +51,42 @@ const server = http.createServer((req, res) => {
           <title>MAXVY Bot - QR Code</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
             body { 
               font-family: Arial, sans-serif; 
               text-align: center; 
-              padding: 50px;
+              padding: 10px;
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
               color: white;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
             }
             .container {
               background: white;
               color: #333;
-              padding: 40px;
+              padding: 30px 20px;
               border-radius: 20px;
               max-width: 600px;
+              width: 100%;
               margin: 0 auto;
               box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             }
-            h1 { color: #667eea; margin-bottom: 20px; }
-            p { font-size: 18px; line-height: 1.6; }
+            h1 { 
+              color: #667eea; 
+              margin-bottom: 20px;
+              font-size: clamp(20px, 5vw, 28px);
+            }
+            p { 
+              font-size: clamp(14px, 3vw, 18px);
+              line-height: 1.6;
+              margin: 10px 0;
+            }
             .refresh { 
               margin-top: 30px;
               padding: 15px 30px;
@@ -70,10 +94,16 @@ const server = http.createServer((req, res) => {
               color: white;
               border: none;
               border-radius: 10px;
-              font-size: 16px;
+              font-size: clamp(14px, 3vw, 16px);
               cursor: pointer;
+              transition: background 0.3s;
             }
             .refresh:hover { background: #5568d3; }
+            @media (max-width: 600px) {
+              .container {
+                padding: 20px 15px;
+              }
+            }
           </style>
         </head>
         <body>
@@ -99,49 +129,67 @@ const server = http.createServer((req, res) => {
           <title>MAXVY Bot - Scan QR Code</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
             body { 
               font-family: Arial, sans-serif; 
               text-align: center; 
-              padding: 20px;
+              padding: 10px;
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
               color: white;
               min-height: 100vh;
               display: flex;
               align-items: center;
               justify-content: center;
+              overflow-x: hidden;
             }
             .container {
               background: white;
               color: #333;
-              padding: 40px;
+              padding: 20px;
               border-radius: 20px;
-              max-width: 800px;
+              max-width: 600px;
+              width: 100%;
               margin: 0 auto;
               box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+              overflow: hidden;
             }
             h1 { 
               color: #667eea; 
               margin-bottom: 10px;
-              font-size: 32px;
+              font-size: clamp(20px, 5vw, 32px);
             }
             .subtitle {
               color: #666;
-              margin-bottom: 30px;
-              font-size: 16px;
+              margin-bottom: 20px;
+              font-size: clamp(14px, 3vw, 16px);
             }
             #qrcode {
               background: white;
-              padding: 20px;
+              padding: 15px;
               border-radius: 10px;
-              display: inline-block;
-              margin: 20px 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 20px auto;
+              max-width: 100%;
+              overflow: hidden;
+            }
+            #qrcode canvas {
+              max-width: 100% !important;
+              height: auto !important;
+              display: block;
             }
             .link-box {
               background: #f5f5f5;
-              padding: 20px;
+              padding: 15px;
               border-radius: 10px;
-              margin: 20px 0;
+              margin: 15px 0;
               word-break: break-all;
+              font-size: clamp(12px, 2.5vw, 14px);
             }
             .link-box a {
               color: #667eea;
@@ -151,30 +199,45 @@ const server = http.createServer((req, res) => {
             .instructions {
               text-align: left;
               background: #f9f9f9;
-              padding: 20px;
+              padding: 15px;
               border-radius: 10px;
-              margin: 20px 0;
+              margin: 15px 0;
+              font-size: clamp(13px, 2.5vw, 15px);
+            }
+            .instructions h3 {
+              margin-bottom: 10px;
+              font-size: clamp(16px, 3vw, 18px);
             }
             .instructions ol {
               margin: 10px 0;
               padding-left: 20px;
             }
             .instructions li {
-              margin: 10px 0;
+              margin: 8px 0;
               line-height: 1.6;
             }
             .timer {
               color: #999;
-              font-size: 14px;
-              margin-top: 20px;
+              font-size: clamp(12px, 2.5vw, 14px);
+              margin-top: 15px;
             }
             .warning {
               background: #fff3cd;
               color: #856404;
-              padding: 15px;
+              padding: 12px;
               border-radius: 10px;
-              margin: 20px 0;
+              margin: 15px 0;
               border-left: 4px solid #ffc107;
+              font-size: clamp(13px, 2.5vw, 15px);
+            }
+            @media (max-width: 600px) {
+              .container {
+                padding: 15px;
+                border-radius: 15px;
+              }
+              #qrcode {
+                padding: 10px;
+              }
             }
           </style>
           <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -202,10 +265,13 @@ const server = http.createServer((req, res) => {
             </div>
             
             <div class="link-box">
-              <p><strong>Or use this link:</strong></p>
-              <a href="https://wa.me/qr/${latestQRCode}" target="_blank">
-                Click here to open WhatsApp
-              </a>
+              <p><strong>QR Code Data:</strong></p>
+              <p style="font-size: 12px; color: #666; word-break: break-all; font-family: monospace;">
+                ${latestQRCode.substring(0, 50)}...
+              </p>
+              <p style="font-size: 14px; margin-top: 10px;">
+                <strong>Note:</strong> Scan the QR code above with WhatsApp
+              </p>
             </div>
             
             <div class="timer">
@@ -215,22 +281,37 @@ const server = http.createServer((req, res) => {
           
           <script>
             // Generate QR code
-            const qrData = '${latestQRCode}';
-            QRCode.toCanvas(document.createElement('canvas'), qrData, {
-              width: 300,
-              margin: 2,
-              color: {
-                dark: '#000000',
-                light: '#ffffff'
-              }
-            }, function (error, canvas) {
-              if (error) {
-                console.error(error);
-                document.getElementById('qrcode').innerHTML = '<p>Error generating QR code</p>';
-              } else {
-                document.getElementById('qrcode').appendChild(canvas);
-              }
-            });
+            const qrData = \`${latestQRCode}\`;
+            
+            console.log('QR Data length:', qrData.length);
+            console.log('QR Data preview:', qrData.substring(0, 50));
+            
+            if (!qrData || qrData === 'null' || qrData === 'undefined') {
+              document.getElementById('qrcode').innerHTML = '<p style="color: red;">❌ Invalid QR code data</p>';
+            } else {
+              // Calculate responsive QR size
+              const containerWidth = document.querySelector('.container').offsetWidth;
+              const qrSize = Math.min(280, containerWidth - 80); // Max 280px, with padding
+              
+              QRCode.toCanvas(document.createElement('canvas'), qrData, {
+                width: qrSize,
+                margin: 2,
+                errorCorrectionLevel: 'L',
+                color: {
+                  dark: '#000000',
+                  light: '#ffffff'
+                }
+              }, function (error, canvas) {
+                if (error) {
+                  console.error('QR Generation Error:', error);
+                  document.getElementById('qrcode').innerHTML = '<p style="color: red;">❌ Error generating QR code: ' + error.message + '</p>';
+                } else {
+                  document.getElementById('qrcode').appendChild(canvas);
+                  console.log('✅ QR code generated successfully');
+                  console.log('QR size:', qrSize + 'px');
+                }
+              });
+            }
             
             // Auto refresh after 2 minutes
             setTimeout(() => {
