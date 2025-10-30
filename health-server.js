@@ -240,14 +240,15 @@ const server = http.createServer((req, res) => {
               }
             }
           </style>
-          <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
         </head>
         <body>
           <div class="container">
             <h1>📱 MAXVY WhatsApp Bot</h1>
             <p class="subtitle">Scan QR Code to Connect</p>
             
-            <div id="qrcode"></div>
+            <div id="qrcode">
+              <p style="color: #999;">⏳ Loading QR code...</p>
+            </div>
             
             <div class="warning">
               ⚠️ QR Code expires after a few minutes. If it doesn't work, refresh this page.
@@ -279,38 +280,60 @@ const server = http.createServer((req, res) => {
             </div>
           </div>
           
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
           <script>
-            // Generate QR code
+            // QR code data
             const qrData = ${JSON.stringify(latestQRCode)};
             
             console.log('QR Data length:', qrData.length);
             console.log('QR Data preview:', qrData.substring(0, 50));
             
-            if (!qrData || qrData === 'null' || qrData === 'undefined') {
-              document.getElementById('qrcode').innerHTML = '<p style="color: red;">❌ Invalid QR code data</p>';
-            } else {
-              // Calculate responsive QR size
-              const containerWidth = document.querySelector('.container').offsetWidth;
-              const qrSize = Math.min(280, containerWidth - 80); // Max 280px, with padding
+            // Wait for DOM and QRCode library to load
+            function generateQR() {
+              const qrcodeDiv = document.getElementById('qrcode');
               
-              QRCode.toCanvas(document.createElement('canvas'), qrData, {
-                width: qrSize,
-                margin: 2,
-                errorCorrectionLevel: 'L',
-                color: {
-                  dark: '#000000',
-                  light: '#ffffff'
-                }
-              }, function (error, canvas) {
-                if (error) {
-                  console.error('QR Generation Error:', error);
-                  document.getElementById('qrcode').innerHTML = '<p style="color: red;">❌ Error generating QR code: ' + error.message + '</p>';
-                } else {
-                  document.getElementById('qrcode').appendChild(canvas);
-                  console.log('✅ QR code generated successfully');
-                  console.log('QR size:', qrSize + 'px');
-                }
-              });
+              if (!qrData || qrData === 'null' || qrData === 'undefined') {
+                qrcodeDiv.innerHTML = '<p style="color: red;">❌ Invalid QR code data</p>';
+                return;
+              }
+              
+              if (typeof QRCode === 'undefined') {
+                qrcodeDiv.innerHTML = '<p style="color: red;">❌ QR library failed to load. Please refresh.</p>';
+                console.error('QRCode library not loaded');
+                return;
+              }
+              
+              try {
+                // Clear loading message
+                qrcodeDiv.innerHTML = '';
+                
+                // Calculate responsive QR size
+                const containerWidth = document.querySelector('.container').offsetWidth;
+                const qrSize = Math.min(280, containerWidth - 80);
+                
+                // Generate QR code
+                new QRCode(qrcodeDiv, {
+                  text: qrData,
+                  width: qrSize,
+                  height: qrSize,
+                  colorDark: '#000000',
+                  colorLight: '#ffffff',
+                  correctLevel: QRCode.CorrectLevel.L
+                });
+                
+                console.log('✅ QR code generated successfully');
+                console.log('QR size:', qrSize + 'px');
+              } catch (error) {
+                console.error('QR Generation Error:', error);
+                qrcodeDiv.innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p>';
+              }
+            }
+            
+            // Generate QR when page loads
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', generateQR);
+            } else {
+              generateQR();
             }
             
             // Auto refresh after 2 minutes
