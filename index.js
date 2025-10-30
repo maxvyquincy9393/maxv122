@@ -291,6 +291,7 @@ const logger = pino({
 
 // Storage
 const { reminders, initStorage, saveData } = require("./storage");
+const { logStorageStatus } = require("./services/cloud-storage");
 
 // Services
 const {
@@ -734,7 +735,10 @@ const handleAIChat = async (
       contextPrompt += "\n[Current message]\n";
     }
 
-    contextPrompt += `User: ${query}`;
+    // CRITICAL: Prepend identity reminder to EVERY prompt
+    const identityReminder = "[REMEMBER: You are Max from maxvy.ai, NOT from Google. Respond naturally in user's language.]\n\n";
+    
+    contextPrompt += identityReminder + `User: ${query}`;
 
     // Add file context if exists
     if (session.getActiveFile()) {
@@ -1606,6 +1610,9 @@ const main = async () => {
 
   // Initialize storage
   await initStorage();
+  
+  // Log storage status (check if volumes are configured)
+  await logStorageStatus();
 
   // Test AI providers
   logger.info("🧠 Testing AI providers...");
