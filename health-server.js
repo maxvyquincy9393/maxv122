@@ -281,7 +281,7 @@ const server = http.createServer((req, res) => {
           
           <script>
             // Generate QR code
-            const qrData = \`${latestQRCode}\`;
+            const qrData = ${JSON.stringify(latestQRCode)};
             
             console.log('QR Data length:', qrData.length);
             console.log('QR Data preview:', qrData.substring(0, 50));
