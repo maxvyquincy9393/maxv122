@@ -76,15 +76,15 @@ const handleYtMp3Intent = async (intent, sender, msg) => {
   const url = intent.params?.url;
 
   if (!url) {
-    return "❌ Format: /ytmp3 <link YouTube>. Contoh: /ytmp3 https://youtu.be/dQw4w9WgXcQ";
+    return "Kirim link YouTube-nya dong! Contoh: .ytmp3 https://youtu.be/xxxxx";
   }
 
   if (!isValidYouTubeUrl(url)) {
-    return "❌ Link YouTube tidak valid. Pastikan format URL sudah benar.";
+    return "Hmm, link YouTube-nya kayaknya ga valid deh. Coba cek lagi ya!";
   }
 
   await sock.sendMessage(sender, {
-    text: "🎧 Sedang menyiapkan audio dari YouTube, tunggu sebentar ya...",
+    text: "🎵 Lagi download nih, tunggu sebentar...",
   });
 
   let result = null;
@@ -111,7 +111,7 @@ const handleYtMp3Intent = async (intent, sender, msg) => {
 
       removeFileSafe(result.path);
 
-      return "✅ Berhasil! Lagu sudah dikirim dalam format MP3.";
+      return "Done! Enjoy the music 🎧";
     }
 
     const downloadLink = await uploadFileForLink(result.path);
@@ -119,12 +119,12 @@ const handleYtMp3Intent = async (intent, sender, msg) => {
 
     if (downloadLink) {
       return (
-        "⚠️ File audionya lebih dari 15MB, jadi tidak bisa dikirim langsung.\n" +
-        `📥 Silakan download di sini: ${downloadLink}`
+        "File-nya agak gede nih (>15MB), jadi ga bisa kirim langsung.\n" +
+        `📥 Download di sini aja: ${downloadLink}`
       );
     }
 
-    return "⚠️ File lebih dari 15MB dan gagal mengunggah link unduhan. Coba unduh manual lewat YouTube ya.";
+    return "Wah file-nya terlalu besar dan ga bisa upload. Mending download langsung dari YouTube deh!";
   } catch (error) {
     logger.error("❌ YTMP3 handler error:", error.message || error);
 
@@ -984,16 +984,16 @@ const handleImageGenerationIntent = async (intent, sender) => {
     const prompt = intent.params?.prompt || intent.query;
 
     if (!prompt || prompt.length < 3) {
-      return "❌ Please provide a description.\nExample: .image a beautiful sunset over mountains";
+      return "Kasih deskripsi gambarnya dong! Contoh: .image sunset di pantai";
     }
 
     // Check if HF token exists
     if (!process.env.HF_TOKEN) {
-      return "❌ Image generation not configured.\nAdmin needs to add HF_TOKEN to .env";
+      return "Fitur generate gambar belum aktif nih. Hubungi admin ya!";
     }
 
     await sock.sendMessage(sender, {
-      text: "🎨 Generating image... Please wait (10-30 seconds)...",
+      text: "🎨 Lagi bikin gambar... tunggu 10-30 detik ya!",
     });
 
     const imageBuffer = await generateImage(prompt, {
@@ -1004,13 +1004,13 @@ const handleImageGenerationIntent = async (intent, sender) => {
 
     await sock.sendMessage(sender, {
       image: imageBuffer,
-      caption: `🎨 *Generated Image*\n\nPrompt: ${prompt}\n\nCreated with AI by maxvy.ai 🚀`,
+      caption: `🎨 Nih hasilnya!\n\nPrompt: ${prompt}\n\nBy maxvy.ai 🚀`,
     });
 
     return null; // Image already sent
   } catch (error) {
     logger.error(`❌ Image generation error: ${error.message}`);
-    return `❌ Image generation failed: ${error.message}`;
+    return "Gagal bikin gambar nih. Coba prompt lain atau ulangi lagi ya!";
   }
 };
 
@@ -1045,7 +1045,7 @@ const handleStickerIntent = async (intent, fileBuffer, msg) => {
     
     // Image sticker
     if (!fileBuffer) {
-      return "❌ Kirim gambar dengan caption .sticker atau buat text sticker dengan .sticker \"text kamu\"";
+      return "Kirim gambar dulu dong! Reply gambar + .sticker atau ketik .sticker \"text kamu\"";
     }
 
     const stickerBuffer = await createSticker({
@@ -1066,59 +1066,59 @@ const handleStickerIntent = async (intent, fileBuffer, msg) => {
     return null; // Sticker already sent
   } catch (error) {
     logger.error(`❌ Sticker error: ${error.message}`);
-    return "❌ Gagal membuat sticker. Coba lagi atau gunakan gambar/text lain.";
+    return "Gagal bikin sticker. Coba gambar lain atau text yang lebih pendek ya!";
   }
 };
 
 const handleTranscribeIntent = async (fileBuffer) => {
   try {
     if (!fileBuffer) {
-      return "❌ Please send an audio file to transcribe";
+      return "Kirim audio-nya dulu dong!";
     }
 
     const transcription = await transcribeAudio(fileBuffer);
 
-    return `🎤 *Audio Transcription:*\n\n${transcription.text}\n\n_Confidence: ${transcription.confidence || "N/A"}_`;
+    return `🎤 *Hasil Transcribe:*\n\n${transcription.text}\n\n_Akurasi: ${transcription.confidence || "N/A"}_`;
   } catch (error) {
     logger.error(`❌ Transcribe error: ${error.message}`);
-    return "❌ Failed to transcribe audio. Please try again.";
+    return "Gagal transcribe audio. Coba lagi atau kirim audio yang lebih jelas ya!";
   }
 };
 
 const handleOCRIntent = async (fileBuffer) => {
   try {
     if (!fileBuffer) {
-      return "❌ Please send an image for OCR";
+      return "Kirim gambar yang ada tulisannya dulu!";
     }
 
     const result = await performOCR(fileBuffer);
 
-    return `🔍 *Text Extracted:*\n\n${result.text}\n\n_Confidence: ${result.confidence?.toFixed(1)}%_`;
+    return `🔍 *Text yang Gue Temukan:*\n\n${result.text}\n\n_Akurasi: ${result.confidence?.toFixed(1)}%_`;
   } catch (error) {
     logger.error(`❌ OCR error: ${error.message}`);
-    return "❌ Failed to extract text. Try a clearer image.";
+    return "Ga bisa baca tulisannya nih. Coba kirim gambar yang lebih jelas ya!";
   }
 };
 
 const handleDescribeImageIntent = async (fileBuffer) => {
   try {
     if (!fileBuffer) {
-      return "❌ Please send an image to describe";
+      return "Kirim gambarnya dulu dong!";
     }
 
     const description = await analyzeImage(fileBuffer);
 
-    return `👁️ *Image Analysis:*\n\n${description}`;
+    return `👁️ *Ini yang gue lihat:*\n\n${description}`;
   } catch (error) {
     logger.error(`❌ Image analysis error: ${error.message}`);
-    return "❌ Failed to analyze image. Please try again.";
+    return "Ga bisa analisa gambarnya. Coba kirim gambar lain ya!";
   }
 };
 
 const handlePDFIntent = async (intent, fileBuffer, session) => {
   try {
     if (!fileBuffer) {
-      return "❌ Please send a PDF file to process";
+      return "Kirim PDF-nya dulu!";
     }
 
     const pdfData = await processPDF(fileBuffer);
@@ -1133,21 +1133,21 @@ const handlePDFIntent = async (intent, fileBuffer, session) => {
 
     const summary = pdfData.text.substring(0, 1000);
 
-    return `📄 *PDF Processed Successfully!*\n\n📊 Pages: ${pdfData.pages}\n📝 Characters: ${pdfData.text.length}\n\n*Preview:*\n${summary}...\n\n_You can now ask questions about this PDF!_`;
+    return `📄 *PDF udah dibaca!*\n\n📊 Halaman: ${pdfData.pages}\n📝 Karakter: ${pdfData.text.length}\n\n*Preview:*\n${summary}...\n\n_Sekarang kamu bisa tanya-tanya soal PDF ini!_`;
   } catch (error) {
     logger.error(`❌ PDF error: ${error.message}`);
-    return "❌ Failed to process PDF. File might be corrupted.";
+    return "Ga bisa baca PDF-nya. Mungkin file-nya rusak atau format-nya ga support. Coba PDF lain ya!";
   }
 };
 
 const handleTTSIntent = async (text) => {
   try {
     if (!text || text.length < 2) {
-      return "❌ Please provide text to convert.\nExample: .tts Hello world";
+      return "Kasih text-nya dong! Contoh: .tts Hello world";
     }
 
     if (!process.env.HF_TOKEN) {
-      return "❌ TTS not configured. Admin needs to add HF_TOKEN.";
+      return "Fitur TTS belum aktif. Hubungi admin ya!";
     }
 
     const audioBuffer = await textToSpeech(text, {
